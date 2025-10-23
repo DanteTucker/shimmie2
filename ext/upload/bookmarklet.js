@@ -42,13 +42,35 @@ if (document.getElementById("image-container") !== null) {
 
     var rating = imageContainer.getAttribute("data-rating");
 
-    var fileinfo = document.querySelector(
-        '#sidebar > section:eq(3) > ul > :contains("Size") > a',
-    );
-    var furl =
-        "http://" + document.location.hostname + fileinfo.getAttribute("href");
-    var fs = fileinfo.innerText.split(" ");
-    var filesize = fs[1] === "MB" ? fs[0] * 1024 : fs[0];
+    // Find the download link in the sidebar
+    var fileinfo = null;
+    var sidebarSections = document.querySelectorAll('#sidebar > section');
+    for (var i = 0; i < sidebarSections.length; i++) {
+        var section = sidebarSections[i];
+        var links = section.querySelectorAll('ul li a');
+        for (var j = 0; j < links.length; j++) {
+            var link = links[j];
+            if (link.textContent.includes('Size') || link.textContent.includes('Download')) {
+                fileinfo = link;
+                break;
+            }
+        }
+        if (fileinfo) break;
+    }
+    
+    if (fileinfo) {
+        var furl = "http://" + document.location.hostname + fileinfo.getAttribute("href");
+        var fs = fileinfo.innerText.split(" ");
+        var filesize = fs[1] === "MB" ? fs[0] * 1024 : fs[0];
+    } else {
+        // Fallback: try to find any download link
+        var downloadLinks = document.querySelectorAll('a[href*="/data/"]');
+        if (downloadLinks.length > 0) {
+            fileinfo = downloadLinks[0];
+            var furl = fileinfo.getAttribute("href");
+            var filesize = 0; // Size not available
+        }
+    }
 
     if (supext.search(furl.match("[a-zA-Z0-9]+$")[0]) !== -1) {
         if (filesize <= maxsize) {
@@ -181,16 +203,23 @@ if (document.getElementById("image-container") !== null) {
      */
     if (typeof tag !== "ftp://ftp." && chk !== 1) {
         var tags = [];
-        $('#tag-list h3:contains("Tags")')
-            .nextUntil(":not(li)")
-            .each(function (index) {
-                tags.push(
-                    $(this)
-                        .text()
-                        .replace(/ /g, "_")
-                        .replace(/[\?_]*(.*?)_(\(\?\)_)?[0-9]+$/gm, "$1"),
-                );
-            });
+        var tagList = document.getElementById("tag-list");
+        if (tagList) {
+            var tagHeaders = tagList.querySelectorAll('h3');
+            for (var i = 0; i < tagHeaders.length; i++) {
+                if (tagHeaders[i].textContent.includes("Tags")) {
+                    var nextElement = tagHeaders[i].nextElementSibling;
+                    while (nextElement && nextElement.tagName === 'LI') {
+                        var tagText = nextElement.textContent
+                            .replace(/ /g, "_")
+                            .replace(/[\?_]*(.*?)_(\(\?\)_)?[0-9]+$/gm, "$1");
+                        tags.push(tagText);
+                        nextElement = nextElement.nextElementSibling;
+                    }
+                    break;
+                }
+            }
+        }
         tag = tags.join(" ");
     }
     var source =
@@ -200,16 +229,50 @@ if (document.getElementById("image-container") !== null) {
             document.location.href.match(
                 /\/index\.php\?page=post&s=view&id=[0-9]+/,
             ));
-    var rating = $('#tag-list h3:contains("Statistics")')
-        .nextUntil(":not(li)")
-        .filter(':contains("Rating")')
-        .text()
-        .match("Rating: ([a-zA-Z]+)")[1];
-    var furl = $('#tag-list h3:contains("Options")')
-        .nextUntil(":not(li)")
-        .filter(':contains("Original image")')
-        .find("a")
-        .first()[0].href;
+    // Extract rating
+    var rating = "safe"; // default
+    var tagList = document.getElementById("tag-list");
+    if (tagList) {
+        var headers = tagList.querySelectorAll('h3');
+        for (var i = 0; i < headers.length; i++) {
+            if (headers[i].textContent.includes("Statistics")) {
+                var nextElement = headers[i].nextElementSibling;
+                while (nextElement && nextElement.tagName === 'LI') {
+                    if (nextElement.textContent.includes("Rating")) {
+                        var ratingMatch = nextElement.textContent.match("Rating: ([a-zA-Z]+)");
+                        if (ratingMatch) {
+                            rating = ratingMatch[1];
+                        }
+                        break;
+                    }
+                    nextElement = nextElement.nextElementSibling;
+                }
+                break;
+            }
+        }
+    }
+    
+    // Extract file URL
+    var furl = "";
+    if (tagList) {
+        var headers = tagList.querySelectorAll('h3');
+        for (var i = 0; i < headers.length; i++) {
+            if (headers[i].textContent.includes("Options")) {
+                var nextElement = headers[i].nextElementSibling;
+                while (nextElement && nextElement.tagName === 'LI') {
+                    if (nextElement.textContent.includes("Original image")) {
+                        var link = nextElement.querySelector('a');
+                        if (link) {
+                            furl = link.href;
+                        }
+                        break;
+                    }
+                    nextElement = nextElement.nextElementSibling;
+                }
+                break;
+            }
+        }
+    }
     // File size is not supported because it's not provided.
 
     if (supext.search(furl.match("[a-zA-Z0-9]+$")[0]) !== -1) {
