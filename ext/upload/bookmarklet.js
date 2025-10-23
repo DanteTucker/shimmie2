@@ -135,6 +135,46 @@ if (document.getElementById("image-container") !== null) {
     } else {
         alert(notsup);
     }
+} else if (document.getElementById("image-container") !== null && document.querySelector("#image-container[data-file-url]") !== null) {
+    /*
+     * e621
+     */
+    var imageContainer = document.querySelector("#image-container");
+    if (typeof tag !== "ftp://ftp." && chk !== 1) {
+        var tag = imageContainer.getAttribute("data-tags");
+    }
+    tag = tag.replace(/\+/g, "%2B");
+
+    var source = document.location.href;
+
+    var rating = imageContainer.getAttribute("data-rating");
+    // Convert e621 rating format to standard format
+    if (rating === "s") rating = "safe";
+    else if (rating === "q") rating = "questionable";
+    else if (rating === "e") rating = "explicit";
+
+    var furl = imageContainer.getAttribute("data-file-url");
+    var filesize = parseInt(imageContainer.getAttribute("data-size"));
+    filesize = filesize / 1024; // Convert bytes to KB
+
+    if (supext.search(furl.match("[a-zA-Z0-9]+$")[0]) !== -1) {
+        if (filesize <= maxsize) {
+            history.pushState(history.state, document.title, location.href);
+            location.href =
+                ste +
+                furl +
+                "&tags=" +
+                tag +
+                "&rating=" +
+                rating +
+                "&source=" +
+                source;
+        } else {
+            alert(toobig);
+        }
+    } else {
+        alert(notsup);
+    }
 } else if (document.getElementById("tag-list") !== null) {
     /*
      * gelbooru
